@@ -1,5 +1,8 @@
 # workflow/steps/register.py
 import argparse
+import os
+import time
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -19,13 +22,25 @@ def _ensure_model_package_group(sm, group_name: str):
 
 
 def _upload_if_local(s3_client, local_path: str, bucket: str, key: str) -> str:
-    # ProcessingStep input으로 들어오는 경로는 보통 local path임 (/opt/ml/...)
-    # s3://면 그대로 쓰고, 아니면 S3로 업로드해서 S3 URI를 반환
     if local_path.startswith("s3://"):
         return local_path
-
     s3_client.upload_file(local_path, bucket, key)
     return f"s3://{bucket}/{key}"
+
+
+def _wait_approval(sm, model_package_arn: str, desired: str = "Approved", timeout: int = 120, poll: int = 3):
+    """Wait until ModelApprovalStatus becomes desired (handles eventual consistency)."""
+    start = time.time()
+    while True:
+        d = sm.describe_model_package(ModelPackageName=model_package_arn)
+        status = d.get("ModelApprovalStatus")
+        if status == desired:
+            return
+        if time.time() - start > timeout:
+            raise RuntimeError(
+                f"Timed out waiting for approval status '{desired}'. Current='{status}', arn='{model_package_arn}'"
+            )
+        time.sleep(poll)
 
 
 def main():
@@ -36,22 +51,32 @@ def main():
     parser.add_argument("--image-uri", required=True)
     parser.add_argument("--role-arn", required=True)
 
-    # (선택) test step에서 만든 metrics JSON이 S3에 있을 때만 넣기
     parser.add_argument("--metrics-s3-uri", required=False, default="")
 
-    # (필수) 업로드 목적지
     parser.add_argument("--artifact-bucket", required=True)
     parser.add_argument("--artifact-prefix", required=True)  # e.g. flights/artifacts/FlightPriceXGB
+
+    # ✅ for end-to-end pipeline
+    parser.add_argument(
+        "--auto-approve",
+        action="store_true",
+        help="Auto-approve the created model package so Deploy can run in the same pipeline execution.",
+    )
+
     args = parser.parse_args()
 
     sm = boto3.client("sagemaker", region_name=args.region)
     s3 = boto3.client("s3", region_name=args.region)
 
-    # 1) ModelPackageGroup 보장
     _ensure_model_package_group(sm, args.model_group)
 
-    # 2) model.tar.gz 를 S3로 업로드(로컬 경로면)
-    model_key = f"{args.artifact_prefix.rstrip('/')}/model.tar.gz"
+    # 충돌 방지: timestamp + (가능하면 pipeline execution id 일부)
+    suffix = time.strftime("%Y%m%d-%H%M%S")
+    exec_arn = os.getenv("SM_PIPELINE_EXECUTION_ARN", "")
+    if exec_arn:
+        suffix = suffix + "-" + exec_arn.split("/")[-1][-8:]
+
+    model_key = f"{args.artifact_prefix.rstrip('/')}/{suffix}/model.tar.gz"
     model_data_url = _upload_if_local(
         s3_client=s3,
         local_path=args.model_tar,
@@ -59,7 +84,6 @@ def main():
         key=model_key,
     )
 
-    # 3) metrics가 유효할 때만 ModelMetrics 포함
     model_metrics = None
     if args.metrics_s3_uri and args.metrics_s3_uri.startswith("s3://"):
         model_metrics = {
@@ -84,18 +108,31 @@ def main():
             "SupportedContentTypes": ["text/csv"],
             "SupportedResponseMIMETypes": ["text/csv"],
         },
-        ModelApprovalStatus="PendingManualApproval",  # 팀 합의대로면 여기 유지
+        # 기본값은 Pending. auto-approve면 바로 Approved로 올릴 것.
+        ModelApprovalStatus="PendingManualApproval",
     )
 
     if model_metrics:
         kwargs["ModelMetrics"] = model_metrics
 
     response = sm.create_model_package(**kwargs)
+    model_package_arn = response["ModelPackageArn"]
 
     print("✅ Model registered")
-    print("ModelPackageArn:", response["ModelPackageArn"])
+    print("ModelPackageArn:", model_package_arn)
     print("ModelDataUrl:", model_data_url)
     print("ApprovalStatus: PendingManualApproval")
+
+    # ✅ Auto approve for one-shot pipeline
+    if args.auto_approve:
+        print("[register] auto-approving model package:", model_package_arn)
+        sm.update_model_package(
+            ModelPackageArn=model_package_arn,
+            ModelApprovalStatus="Approved",
+            ApprovalDescription="Auto-approved by pipeline for end-to-end execution.",
+        )
+        _wait_approval(sm, model_package_arn, desired="Approved", timeout=180, poll=3)
+        print("✅ ApprovalStatus: Approved")
 
 
 if __name__ == "__main__":
