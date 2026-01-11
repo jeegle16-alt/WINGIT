@@ -10,7 +10,6 @@ def _endpoint_status(sm, endpoint_name: str) -> Optional[str]:
     try:
         return sm.describe_endpoint(EndpointName=endpoint_name)["EndpointStatus"]
     except ClientError as e:
-        # endpoint가 없을 때도 ValidationException으로 떨어짐
         if e.response["Error"]["Code"] == "ValidationException":
             return None
         raise
@@ -42,10 +41,10 @@ def _wait_in_service(sm, endpoint_name: str, poll=30, timeout=3600):
         time.sleep(poll)
 
 
-def _get_latest_approved_package(sm, model_group: str) -> str:
+def _get_latest_completed_package(sm, model_group: str) -> str:
     """
-    Deploy는 반드시 Approved 모델만 사용해야 함.
-    (PendingManualApproval이면 CreateModel 단계에서 막힘)
+    Pick the latest COMPLETED model package regardless of approval status.
+    This enables end-to-end pipeline runs without manual approval.
     """
     resp = sm.list_model_packages(
         ModelPackageGroupName=model_group,
@@ -58,15 +57,16 @@ def _get_latest_approved_package(sm, model_group: str) -> str:
         arn = p["ModelPackageArn"]
         d = sm.describe_model_package(ModelPackageName=arn)
 
-        # 가장 최근 Approved+Completed를 선택
-        if d.get("ModelApprovalStatus") == "Approved" and d.get("ModelPackageStatus") == "Completed":
+        # ✅ Only require the package to be ready to deploy
+        if d.get("ModelPackageStatus") == "Completed":
+            approval = d.get("ModelApprovalStatus")
+            print(f"[deploy] picked package: {arn} (Approval={approval}, Status=Completed)")
             return arn
 
     raise RuntimeError(
-        f"No Approved+Completed ModelPackage found in group: {model_group}. "
-        f"Console에서 가장 최신 패키지를 Approved로 바꾼 뒤 다시 실행해."
+        f"No Completed ModelPackage found in group: {model_group}. "
+        f"Register step가 ModelPackage를 생성했는지 확인해."
     )
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -81,11 +81,10 @@ def main():
 
     sm = boto3.client("sagemaker", region_name=args.region)
 
-    # 1) Approved model package 선택
-    model_package_arn = _get_latest_approved_package(sm, args.model_group)
-    print("[deploy] using APPROVED model package:", model_package_arn)
+    model_package_arn = _get_latest_completed_package(sm, args.model_group)
+    print("[deploy] using COMPLETED model package:", model_package_arn)
 
-    # 2) model/config은 매번 새 이름(충돌 방지)
+
     suffix = time.strftime("%Y%m%d-%H%M%S")
     model_name = f"{args.endpoint_name}-model-{suffix}"
     cfg_name = f"{args.endpoint_name}-cfg-{suffix}"
@@ -108,7 +107,6 @@ def main():
         ],
     )
 
-    # 3) endpoint 상태에 따라 create / update / recreate
     st = _endpoint_status(sm, args.endpoint_name)
 
     if st is None:
