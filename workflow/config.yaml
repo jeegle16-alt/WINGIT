@@ -1,0 +1,23 @@
+SchemaVersion: "1.0"
+SageMaker:
+  PythonSDK:
+    Modules:
+      RemoteFunction:
+        # role arn is not required if in SageMaker Notebook instance or SageMaker Studio
+        # Uncomment the following line and replace with the right execution role if in a local IDE
+        # RoleArn: <replace the role arn here>
+        # S3RootUri: <replace with s3 root uri>
+        InstanceType: ml.m5.xlarge
+        Dependencies: /home/sagemaker-user/flights_fare_timing_ml/workflow/requirements.txt
+        IncludeLocalWorkDir: true
+        PreExecutionCommands:
+          - "conda install -y -c conda-forge libstdcxx-ng libgcc-ng"
+          - "sudo bash -c 'echo /opt/conda/lib > /etc/ld.so.conf.d/conda.conf'"
+          - "sudo ldconfig"
+          - "sudo chmod -R 777 /opt/ml/model"
+        CustomFileFilter:
+          IgnoreNamePatterns:
+            - "data/*"
+            - "models/*"
+            - "*.ipynb"
+            - "__pycache__"
