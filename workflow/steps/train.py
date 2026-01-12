@@ -8,7 +8,6 @@ Input (channels):
 
 Output:
   /opt/ml/model/xgboost-model
-  /opt/ml/model/train_metrics.json
   /opt/ml/output/data/train_metrics.json
 """
 
@@ -254,8 +253,6 @@ def main():
         model_path = model_dir / "xgboost-model"
         booster.save_model(str(model_path))
         print(f"[train] saved model: {model_path}")
-
-        (model_dir / "train_metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")
 
         out_dir = Path(args.output_data_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
