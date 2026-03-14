@@ -1,4 +1,4 @@
-# WING IT ✈️
+# WING IT
 
 > 항공권 가격 흐름을 바탕으로 향후 30일 안에서 유리한 구매 시점을 추천하는 ML 서비스
 
@@ -44,23 +44,27 @@ WINGIT/
 │       ├── register.py
 │       └── deploy.py
 └── README.md
-Request Flow
+···
+---
+## Request Flow
+```
 Client → API Gateway → Lambda → SageMaker Endpoint → Response
+```
 사용자 요청이 들어오면 Lambda에서 입력값을 정리하고 향후 30일 후보 날짜를 만든 뒤,
 SageMaker Endpoint 예측 결과를 바탕으로 가격 흐름과 구매 시점 Top 3를 정리해 응답합니다.
-
-Core Features
-1. 항공권 구매 시점 추천
+---
+## Core Features
+### 1. 항공권 구매 시점 추천
 향후 30일의 예상 가격을 비교해 상대적으로 유리한 구매 시점 Top 3를 추천합니다.
 
-2. 가격 흐름 시각화
+### 2. 가격 흐름 시각화
 예측 결과를 그래프로 함께 보여줘, 지금 구매할지 기다릴지 흐름을 보고 판단할 수 있게 했습니다.
 
-3. 실시간 추론 API
+### 3. 실시간 추론 API
 API Gateway, Lambda, SageMaker Endpoint를 연결해 사용자 요청에 따라 예측 결과를 바로 반환하도록 구성했습니다.
-
-Core Implementation
-1. Feature Engineering
+---
+## Core Implementation
+### 1. Feature Engineering
 가격의 최근 흐름이 반영되도록 피처를 만들고, 미래 정보가 섞이지 않도록 시점을 기준으로 데이터를 나눴습니다.
 
 주요 피처 예시
@@ -93,7 +97,7 @@ target에는 log1p 변환을 적용했습니다.
 
 노선별 시간 흐름을 유지한 상태로 학습·검증·테스트를 나눴습니다.
 
-2. ML Pipeline
+### 2. ML Pipeline
 SageMaker Pipeline으로 전처리부터 배포까지의 흐름을 나눠 구성했습니다.
 
 Preprocess
@@ -115,7 +119,7 @@ Deploy
 Experiment Tracking
 MLflow에는 실행별 파라미터, 메트릭, 아티팩트를 함께 기록해 결과를 다시 확인하고 비교할 수 있게 했습니다.
 
-3. Serving Architecture
+### 3. Serving Architecture
 요청 처리와 예측 계산이 섞이지 않도록, 입력값 정리와 응답 가공은 Lambda에서 맡고 실제 예측 계산은 SageMaker Endpoint에서 처리하도록 나눴습니다.
 
 Serving Flow
