@@ -51,9 +51,3 @@ WINGIT/
 Client → API Gateway → Lambda → SageMaker Endpoint → Response
 ```
 
----
-
-## Links
-
-- 🌐 Demo:
-- 📁 Portfolio:
