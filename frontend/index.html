@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WING IT - Fare Timing</title>
+  <style>
+  :root{
+    --bg:#f6f1e9;
+    --bg2:#f2ede3;
+
+    --card: rgba(255,255,255,0.92);
+    --card-border: rgba(15,23,42,0.10);
+
+    --text:#0f172a;
+    --muted: rgba(15,23,42,0.58);
+
+    --input:#eaf1ff;
+    --input-border: rgba(15,23,42,0.10);
+
+    --pill:#e7f7f2;
+    --pill-text:#0f766e;
+
+    --shadow: 0 18px 50px rgba(15,23,42,0.10);
+    --radius: 18px;
+    --radius-sm: 14px;
+
+    --rawbg: #0b1220;
+    --rawtext: #e5e7eb;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+                 "Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+    color: var(--text);
+
+    background:
+      linear-gradient(rgba(255,255,255,0.25), rgba(255,255,255,0.25)),
+      radial-gradient(900px 520px at 14% 10%, rgba(14,165,167,0.11), transparent 60%),
+      radial-gradient(900px 520px at 82% 22%, rgba(34,197,94,0.10), transparent 60%),
+      linear-gradient(180deg, var(--bg), var(--bg2));
+    padding: 28px 18px 70px;
+  }
+  body::before{
+    content:"";
+    position: fixed;
+    inset: 0;
+    pointer-events:none;
+    opacity: 0.18;
+    background-image:
+      linear-gradient(to right, rgba(15,23,42,0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15,23,42,0.06) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
+  .wrap{max-width: 980px; margin: 0 auto; position: relative;}
+  .brand{
+    letter-spacing: 0.30em;
+    font-weight: 900;
+    font-size: 12px;
+    color: rgba(15,23,42,0.58);
+    margin-bottom: 6px;
+  }
+  h1{
+    margin:0 0 8px;
+    font-size: 48px;
+    line-height: 1.03;
+    letter-spacing: -0.03em;
+  }
+  .subtitle{
+    margin:0 0 24px;
+    font-size: 14px;
+    color: var(--muted);
+    max-width: 720px;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items:start;
+  }
+
+  .card{
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+  }
+  .card h2{
+    margin:0 0 14px;
+    font-size: 16px;
+    font-weight: 900;
+  }
+
+  .field{margin-bottom: 12px;}
+  .label{
+    font-size: 12px;
+    font-weight: 900;
+    color: rgba(15,23,42,0.70);
+    margin-bottom: 6px;
+  }
+
+  .row{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  input, select{
+    width: 100%;
+    padding: 12px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--input-border);
+    background: #fff;
+    outline: none;
+    font-size: 14px;
+  }
+  .input-soft{
+    background: var(--input);
+    border-color: rgba(15,23,42,0.08);
+    font-weight: 800;
+    color: rgba(15,23,42,0.86);
+  }
+  input:focus, select:focus{
+    border-color: rgba(14,165,167,0.55);
+    box-shadow: 0 0 0 4px rgba(14,165,167,0.12);
+  }
+
+  .btn{
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px 14px;
+    border: 0;
+    border-radius: 14px;
+    cursor: pointer;
+    color: white;
+    font-weight: 900;
+    font-size: 14px;
+    background: linear-gradient(90deg, #0ea5a7, #22c55e, #a16207);
+    box-shadow:
+      0 14px 30px rgba(14,165,167,0.16),
+      0 8px 18px rgba(34,197,94,0.12);
+  }
+  .btn:disabled{opacity:0.6; cursor:not-allowed;}
+  .api-hint{
+    margin-top: 10px;
+    font-size: 12px;
+    color: rgba(15,23,42,0.52);
+    word-break: break-all;
+  }
+
+  .pill{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    width: 100%;
+    background: var(--pill);
+    color: var(--pill-text);
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 900;
+    margin-bottom: 12px;
+    border: 1px solid rgba(16,185,129,0.12);
+  }
+  .dot{width: 8px; height: 8px; border-radius: 999px; background:#10b981;}
+
+  .section-title{
+    margin: 16px 0 10px;
+    font-size: 13px;
+    font-weight: 900;
+    color: rgba(15,23,42,0.90);
+  }
+
+  /* ✅ Travel summary background block */
+  .summary-wrap{
+    margin-bottom: 8px;
+    padding: 12px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(15,23,42,0.03), rgba(15,23,42,0.015));
+    border: 1px solid rgba(15,23,42,0.06);
+    overflow: hidden; /* 내부 박스가 삐져나오는 것 방지 */
+  }
+
+  .summary{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 0; /* ✅ wrap이 margin을 관리하므로 여기선 제거 */
+  }
+  .summary .box{
+    background: rgba(255,255,255,0.78);
+    border: 1px solid rgba(15,23,42,0.08);
+    border-radius: 14px;
+    padding: 10px 12px;
+  }
+  .summary .k{font-size: 11px; color: rgba(15,23,42,0.55); font-weight:900;}
+  .summary .v{font-size: 13px; font-weight:900; margin-top: 4px;}
+
+  .top3{display:flex; flex-direction:column; gap:10px;}
+  .top3-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 12px;
+    background: rgba(255,255,255,0.80);
+    border: 1px solid rgba(15,23,42,0.08);
+    border-radius: 14px;
+  }
+  .top3-left{display:flex; flex-direction:column; gap:2px; font-size:12px; font-weight:900; color: rgba(15,23,42,0.88);}
+  .top3-left span{font-weight:800; color: rgba(15,23,42,0.58); font-size:12px;}
+  .top3-right{text-align:right; font-size:12px; font-weight:900; color: rgba(15,23,42,0.78); text-transform: lowercase;}
+
+  .top3-wrap{
+    margin-bottom: 8px;
+    padding: 12px;
+    border-radius: 14px;
+    background: linear-gradient(
+      180deg,
+      rgba(238, 235, 245, 0.85),
+      rgba(255, 255, 255, 0.6)
+      );
+      border: 1px solid rgba(15,23,42,0.06);
+      overflow: hidden;
+    }
+
+  .card, .trend, .grid, .wrap{ min-width: 0; }
+  .wrap, .card, .trend{ overflow: hidden; }
+
+  .trend{
+    margin-top: 6px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(15,23,42,0.08);
+    background: linear-gradient(180deg, rgba(14,165,167,0.06), rgba(34,197,94,0.04));
+  }
+  .trend-head{
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .trend-note{
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .trend img{
+    display: none;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .raw{
+    margin-top: 10px;
+    background: var(--rawbg);
+    color: var(--rawtext);
+    border-radius: 14px;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    max-height: 240px;
+    overflow:auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    white-space: pre;
+  }
+
+  .error{
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.24);
+    color: rgba(127,29,29,0.95);
+    font-size: 12px;
+    font-weight: 900;
+    display:none;
+  }
+
+  @media (max-width: 920px){
+    .grid{grid-template-columns: 1fr;}
+    h1{font-size: 40px;}
+    .summary{grid-template-columns: 1fr;}
+  }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="brand">WING IT</div>
+    <h1>WING IT</h1>
+    <p class="subtitle">
+      Enter a route and dates. The service estimates the cheapest purchase time and a 30 day trend so you can book with confidence.
+    </p>
+
+    <div class="grid">
+      <!-- Request -->
+      <div class="card">
+        <h2>Request</h2>
+
+        <div class="field">
+          <div class="label">Origin (IATA code)</div>
+          <input id="origin" class="input-soft" value="ICN" />
+        </div>
+
+        <div class="field">
+          <div class="label">Destination (IATA code)</div>
+          <input id="destination" class="input-soft" value="NRT" />
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <div class="label">Departure date</div>
+            <input id="departure_date" type="date" value="2026-03-15" />
+          </div>
+          <div class="field">
+            <div class="label">Arrival date</div>
+            <input id="arrival_date" type="date" value="2026-03-16" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label">Stops count</div>
+          <select id="stops_count">
+            <option value="0" selected>0 - Direct</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
+
+        <button id="btnPredict" class="btn">Predict fare timing</button>
+
+        <div class="error" id="errorBox"></div>
+        <div class="api-hint" id="apiHint"></div>
+      </div>
+
+      <!-- Result -->
+      <div class="card">
+        <h2>Result</h2>
+
+        <div class="pill">
+          <span class="dot"></span>
+          <span id="statusText">Ready</span>
+        </div>
+
+        <div class="section-title">Travel summary</div>
+        <!-- ✅ FIX: div 태그 제대로 -->
+        <div class="summary-wrap">
+          <div class="summary" id="summary">
+            <div class="box"><div class="k">Origin</div><div class="v">-</div></div>
+            <div class="box"><div class="k">Destination</div><div class="v">-</div></div>
+            <div class="box"><div class="k">Departure</div><div class="v">-</div></div>
+            <div class="box"><div class="k">Arrival</div><div class="v">-</div></div>
+            <div class="box"><div class="k">Stops</div><div class="v">-</div></div>
+          </div>
+        </div>
+
+        <div class="section-title">Top 3 cheapest purchase times</div>
+        <div class="top3-wrap">
+          <div class="top3" id="top3"></div>
+        </div>
+
+        <div class="section-title">30 day price trend</div>
+        <div class="trend">
+          <div class="trend-head"></div>
+          <img id="trendImg" alt="price trend chart" />
+        </div>
+
+        <div class="section-title">Raw response</div>
+        <div class="raw" id="raw">{\n  "status": "no data"\n}</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  const API_URL = "https://3eqy0rlsx6.execute-api.us-east-1.amazonaws.com/default/flights-lambda-function";
+  document.getElementById("apiHint").textContent = `API: POST ${API_URL}`;
+
+  const els = {
+    origin: document.getElementById("origin"),
+    destination: document.getElementById("destination"),
+    departure_date: document.getElementById("departure_date"),
+    arrival_date: document.getElementById("arrival_date"),
+    stops_count: document.getElementById("stops_count"),
+
+    btn: document.getElementById("btnPredict"),
+    status: document.getElementById("statusText"),
+    top3: document.getElementById("top3"),
+    raw: document.getElementById("raw"),
+    err: document.getElementById("errorBox"),
+
+    summary: document.getElementById("summary"),
+    trendImg: document.getElementById("trendImg"),
+  };
+
+  function setStatus(t){ els.status.textContent = t; }
+  function showError(msg){ els.err.style.display = "block"; els.err.textContent = msg; }
+  function clearError(){ els.err.style.display = "none"; els.err.textContent = ""; }
+  function formatKRW(v){
+    if (typeof v !== "number" || !isFinite(v)) return String(v);
+    return v.toLocaleString("ko-KR");
+  }
+
+  function renderSummary(user_input){
+    const u = user_input || {};
+    const boxes = [
+      { k: "Origin", v: u.origin ?? "-" },
+      { k: "Destination", v: u.destination ?? "-" },
+      { k: "Departure", v: u.departure_date ?? "-" },
+      { k: "Arrival", v: u.arrival_date ?? "-" },
+      { k: "Stops", v: (u.stops_count ?? "-") },
+    ];
+    els.summary.innerHTML = boxes.map(b => `
+      <div class="box">
+        <div class="k">${b.k}</div>
+        <div class="v">${b.v}</div>
+      </div>
+    `).join("");
+  }
+
+  function renderTop3(items){
+    els.top3.innerHTML = "";
+    if (!Array.isArray(items) || items.length === 0){
+      els.top3.innerHTML = `<div style="color:rgba(17,24,39,0.6); font-size:12px; font-weight:800;">No results</div>`;
+      return;
+    }
+    for (const it of items){
+      const rank = it.rank ?? "-";
+      const date = it.date ?? "-";
+      const price = it.predicted_price;
+      const priceText = (typeof price === "number") ? formatKRW(price) : String(price ?? "-");
+
+      const div = document.createElement("div");
+      div.className = "top3-item";
+      div.innerHTML = `
+        <div class="top3-left">
+          <div><b>#${rank}</b> ${date}</div>
+          <span>${priceText}</span>
+        </div>
+      `;
+      els.top3.appendChild(div);
+    }
+  }
+
+  function renderTrend(price_trend_30d){
+    const url = price_trend_30d?.image?.url;
+
+    if (!url || typeof url !== "string" || url.trim() === ""){
+      els.trendImg.style.display = "none";
+      els.trendImg.removeAttribute("src");
+      return;
+    }
+
+    els.trendImg.src = url;
+    els.trendImg.style.display = "block";
+
+    els.trendImg.onerror = () => {
+      els.trendImg.style.display = "none";
+      els.trendImg.removeAttribute("src");
+    };
+  }
+
+  function renderAll(data){
+    els.raw.textContent = JSON.stringify(data, null, 2);
+    renderSummary(data?.user_input);
+    renderTop3(data?.top_3_cheapest_purchase_times);
+    renderTrend(data?.price_trend_30d);
+  }
+
+  els.btn.addEventListener("click", async () => {
+    clearError();
+    setStatus("Predicting...");
+    els.btn.disabled = true;
+
+    const payload = {
+      origin: els.origin.value.trim(),
+      destination: els.destination.value.trim(),
+      departure_date: els.departure_date.value,
+      arrival_date: els.arrival_date.value,
+      stops_count: Number(els.stops_count.value),
+    };
+
+    try{
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); }
+      catch { data = { error: "Non-JSON response", raw: text }; }
+
+      if (!res.ok){
+        setStatus("Failed");
+        showError(`API Error (${res.status}): ${data?.message ?? data?.error ?? "unknown"}`);
+        els.raw.textContent = JSON.stringify(data, null, 2);
+        return;
+      }
+
+      setStatus("Prediction received");
+      renderAll(data);
+
+    } catch (e){
+      setStatus("Failed");
+      const msg = (e && e.message) ? e.message : String(e);
+      showError(`Fetch failed: ${msg}\n(DevTools Console/Network에서 실제 원인 확인 가능)`);
+      console.error("Fetch error:", e);
+    } finally {
+      els.btn.disabled = false;
+    }
+  });
+
+  renderAll({
+    user_input: {
+      origin: "ICN",
+      destination: "NRT",
+      departure_date: "2026-03-15",
+      arrival_date: "2026-03-16",
+      stops_count: 0
+    },
+    top_3_cheapest_purchase_times: [
+      { rank: 1, predicted_price: 245000 },
+      { rank: 2, predicted_price: 248500 },
+      { rank: 3, predicted_price: 252000 }
+    ],
+    price_trend_30d: {
+      image: { url: "" },
+      metadata: { horizon_days: 30 }
+    }
+  });
+  </script>
+</body>
+</html>
